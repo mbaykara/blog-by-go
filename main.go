@@ -3,94 +3,180 @@ package main
 import (
 	"bytes"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/adrg/frontmatter"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 )
 
-func main() {
-	mux := http.NewServeMux()
-
-	postTemplate := template.Must(template.ParseFiles("post.gohtml"))
-	mux.HandleFunc("GET /posts/{slug}", PostHandler(FileReader{}, postTemplate))
-
-	err := http.ListenAndServe(":3030", mux)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-type SlugReader interface {
-	Read(slug string) (string, error)
-}
-
-type FileReader struct{}
-
-func (fr FileReader) Read(slug string) (string, error) {
-	f, err := os.Open(slug + ".md")
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
+// Post represents a blog post with a title, date, and content.
 type PostData struct {
-	Content template.HTML
-	Title   string `toml:"title"`
-	Author  Author `toml:"author"`
+	Title   string
+	Date    time.Time
+	Slug    string
+	Content template.HTML // Content after converting from Markdown
 }
 
-type Author struct {
-	Name  string `toml:"name"`
-	Email string `toml:"email"`
+// TemplateData holds the data passed to the template.
+type TemplateData struct {
+	Title string
+	Posts []PostData
 }
 
-func PostHandler(sl SlugReader, tpl *template.Template) http.HandlerFunc {
-	mdRenderer := goldmark.New(
+// RenderMarkdown converts Markdown content to HTML.
+func RenderMarkdown(filePath string) (template.HTML, error) {
+	md, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	markdown := goldmark.New(
 		goldmark.WithExtensions(
 			highlighting.NewHighlighting(
 				highlighting.WithStyle("dracula"),
 			),
 		),
 	)
-	return func(w http.ResponseWriter, r *http.Request) {
-		slug := r.PathValue("slug")
-		postMarkdown, err := sl.Read(slug)
+	remainingMd, err := frontmatter.Parse(strings.NewReader(string(md)), &md)
+	if err != nil {
+		panic(err)
+	}
+
+	var buf bytes.Buffer
+	err = markdown.Convert([]byte(remainingMd), &buf)
+	if err != nil {
+		panic(err)
+	}
+	return template.HTML(buf.String()), nil
+}
+func CleanTitle(filename string) string {
+	// Remove the extension (.md) if present
+	title := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	// Replace dashes or underscores with spaces
+	title = strings.ReplaceAll(title, "-", " ")
+	title = strings.ReplaceAll(title, "_", " ")
+
+	// Capitalize the first letter of each word
+	title = strings.Title(title)
+
+	return title
+}
+
+// LoadBlogPosts loads the blog posts from Markdown files and sorts them by date.
+func LoadBlogPosts() ([]PostData, error) {
+	var posts []PostData
+
+	// Get all markdown files from the "content" directory
+	files, err := filepath.Glob("posts/*.md")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		// Extract the filename without the extension to use as the Title and Slug
+		filename := filepath.Base(file)
+		slug := strings.TrimSuffix(filename, filepath.Ext(filename))
+		title := CleanTitle(filename)
+
+		// Use the file's ModTime as the post's Date
+		fileInfo, err := os.Stat(file)
 		if err != nil {
-			// TODO: Handle different errors in the future
-			http.Error(w, "Post not found", http.StatusNotFound)
-			return
+			return nil, err
 		}
 
-		var post PostData
-		remainingMd, err := frontmatter.Parse(strings.NewReader(postMarkdown), &post)
+		// Load and convert the Markdown content to HTML
+		content, err := RenderMarkdown(file)
 		if err != nil {
-			http.Error(w, "Error parsing frontmatter", http.StatusInternalServerError)
-			return
+			return nil, err
 		}
 
-		var buf bytes.Buffer
-		err = mdRenderer.Convert([]byte(remainingMd), &buf)
-		if err != nil {
-			panic(err)
+		// Create a Post object
+		post := PostData{
+			Title:   title,
+			Slug:    slug,
+			Date:    fileInfo.ModTime(),
+			Content: content,
 		}
-		post.Content = template.HTML(buf.String())
+		posts = append(posts, post)
+	}
 
-		err = tpl.Execute(w, post)
-		if err != nil {
-			http.Error(w, "Error executing template", http.StatusInternalServerError)
-			return
-		}
+	// Sort posts by date (latest first)
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Date.After(posts[j].Date)
+	})
+
+	return posts, nil
+}
+
+// PostHandler serves a specific blog post based on the slug.
+func PostHandler(w http.ResponseWriter, r *http.Request) {
+	slug := strings.TrimPrefix(r.URL.Path, "/posts/")
+
+	// Load the post's Markdown file based on the slug
+	filePath := filepath.Join("posts", slug+".md")
+	content, err := RenderMarkdown(filePath)
+	if err != nil {
+		http.NotFound(w, r) // If the file doesn't exist, show a 404
+		return
+	}
+
+	// Create a Post object for the post page
+	post := PostData{
+		Slug:    slug,
+		Date:    time.Now(), // Use current time for demonstration, or parse from front matter
+		Content: content,
+	}
+
+	// Set up template data
+	data := struct {
+		Title string
+		Post  PostData
+	}{
+		Title: post.Title,
+		Post:  post,
+	}
+
+	// Parse and execute the template with base and post templates
+	tmpl := template.Must(template.ParseFiles(
+		"templates/base.gohtml",
+		"templates/post.gohtml",
+	))
+
+	// Execute the base template, which includes the post content block
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+	}
+}
+
+func main() {
+	http.HandleFunc("/", HomeHandler)
+	http.HandleFunc("/posts/", PostHandler) // Route for individual blog posts
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+// HomeHandler renders the home page with blog posts.
+func HomeHandler(w http.ResponseWriter, r *http.Request) {
+	posts, err := LoadBlogPosts()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	data := TemplateData{
+		Title: "My Blog",
+		Posts: posts,
+	}
+
+	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "home.gohtml")))
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Fatal(err)
 	}
 }

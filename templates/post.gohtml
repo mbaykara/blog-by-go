@@ -1,0 +1,9 @@
+{{ define "content" }}
+<section id="post" class="px-4 py-4 sm:px-0">
+  <h1 class="text-3xl font-bold">{{ .Title }}</h1>
+  <p class="text-gray-500 text-sm">Published on {{ .Date.Format "January 2, 2006" }}</p>
+  <div class="prose mt-8">
+    {{ .Content }}
+  </div>
+</section>
+{{ end }}
