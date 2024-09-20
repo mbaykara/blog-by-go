@@ -9,5 +9,6 @@ require (
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc // indirect
+	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
