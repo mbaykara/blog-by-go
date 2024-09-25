@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -77,7 +76,7 @@ func LoadBlogPosts() ([]PostData, error) {
 	var posts []PostData
 
 	// Get all markdown files from the "content" directory
-	files, err := filepath.Glob("post/*.md")
+	files, err := filepath.Glob("posts/*.md")
 	if err != nil {
 		return nil, err
 	}
@@ -118,53 +117,71 @@ func LoadBlogPosts() ([]PostData, error) {
 	return posts, nil
 }
 
-// PostHandler serves a specific blog post based on the slug.
-func PostHandler(w http.ResponseWriter, r *http.Request) {
-	slug := strings.TrimPrefix(r.URL.Path, "/post/")
+func main() {
+	http.HandleFunc("/", HomeHandler)
+	http.HandleFunc("/about", AboutHandler)
+	http.HandleFunc("/contact", ContactHandler)
+	http.HandleFunc("/post/", PostHandler)
 
-	// Load the post's Markdown file based on the slug
-	filePath := filepath.Join("post", slug+".md")
-	content, err := RenderMarkdown(filePath)
+	log.Fatal(http.ListenAndServe(":8090", nil))
+}
+
+func PostHandler(w http.ResponseWriter, r *http.Request) {
+	slug := r.URL.Path[len("/post/"):]
+	post, err := LoadPost(slug)
 	if err != nil {
-		http.NotFound(w, r) // If the file doesn't exist, show a 404
+		http.Error(w, "Post not found", http.StatusNotFound)
 		return
 	}
+	// data := struct {
+	// 	Title string
+	// 	Post  PostData
+	// }{
+	// 	Title: post.Title,
+	// 	Post:  post,
+	// }
+	// fmt.Println(data)
 
-	// Create a Post object for the post page
-	post := PostData{
-		Title:   CleanTitle(slug),
-		Date:    time.Now(), // Use current time for demonstration, or parse from front matter
-		Slug:    slug,
-		Content: content,
-	}
-	// Set up template data
-	data := struct {
-		Title string
-		Post  PostData
-	}{
-		Title: post.Title,
-		Post:  post,
-	}
-	fmt.Println(data, "data at line 148")
-
-	// Parse and execute the template with base and post templates
-	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "post.gohtml")))
-
-	// Execute the base template, which includes the post content block
-	err = tmpl.Execute(w, data)
-	if err != nil {
+	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "post.gohtml")))
+	if err := tmpl.Execute(w, post); err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 		return
 	}
 }
 
-func main() {
-	http.HandleFunc("/", HomeHandler)
-	http.HandleFunc("/post/", PostHandler) // Route for individual blog posts
-	http.HandleFunc("/about", AboutHandler)
-	http.HandleFunc("/contact", ContactHandler)
+func LoadPost(slug string) (PostData, error) {
+	// Find the Markdown file with the given slug
+	file := filepath.Join("posts", slug+".md")
+	if _,
+		err := os.Stat(file); os.IsNotExist(err) {
+		return PostData{}, err
+	}
 
-	log.Fatal(http.ListenAndServe(":8090", nil))
+	// Load and convert the Markdown content to HTML
+	content, err := RenderMarkdown(file)
+	if err != nil {
+		return PostData{}, err
+	}
+
+	// Extract the filename without the extension to use as the Title
+	filename := filepath.Base(file)
+	title := CleanTitle(filename)
+
+	// Use the file's ModTime as the post's Date
+	fileInfo, err := os.Stat(file)
+	if err != nil {
+		return PostData{}, err
+	}
+
+	// Create a Post object
+	post := PostData{
+		Title:   title,
+		Date:    fileInfo.ModTime(),
+		Slug:    slug,
+		Content: content,
+	}
+
+	return post, nil
 }
 
 // HomeHandler renders the home page with blog posts.
@@ -180,7 +197,6 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "home.gohtml")))
-	fmt.Println((tmpl), "tmpl at line 185")
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Fatal(err)
 	}
@@ -201,7 +217,6 @@ func AboutHandler(w http.ResponseWriter, r *http.Request) {
 		Title:   "About Me",
 		Content: content,
 	}
-	fmt.Println(data, "data at line 196")
 	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "about.gohtml")))
 	if err := tmpl.Execute(w, data); err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
@@ -223,7 +238,6 @@ func ContactHandler(w http.ResponseWriter, r *http.Request) {
 		Content: content,
 	}
 	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "contact.gohtml")))
-	fmt.Println(tmpl)
 	if err := tmpl.Execute(w, data); err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 		return
