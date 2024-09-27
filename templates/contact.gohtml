@@ -1,8 +1,10 @@
 {{ define "content" }}
-<section id="contact" class="px-4 py-4 sm:px-0">
-  <h2 class="text-2xl font-bold">Contact Us</h2>
-  <div class="prose">
-    {{ .Content }}
-  </div>
-</section>
+    <h2 class="text-2xl font-bold" style="color: #b5bd68;">{{ .Title }}</h2>
+    <div class="leading-relaxed mt-4" style="color: #c5c8c6;">
+        {{ .Content }} <!-- Content rendered from Markdown -->
+    </div>
+
+    <div class="mt-8">
+        <a href="/" style="color: #81a2be; text-decoration: none;" onmouseover="this.style.color='#b5bd68';" onmouseout="this.style.color='#81a2be';">← Back to home</a>
+    </div>
 {{ end }}

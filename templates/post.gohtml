@@ -1,41 +1,12 @@
+{{ define "content" }}
+    <h2 class="text-3xl font-bold" style="color: #b5bd68;">{{ .Title }}</h2>
+    <p class="text-green-500 mb-4" style="color: #8abeb7;">Posted on {{ .Date.Format "Jan 2, 2006" }}</p>
+    
+    <article style="color: #c5c8c6; line-height: 1.6;">
+        {{ .Content }} <!-- Rendered Markdown content in HTML -->
+    </article>
 
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Title }}</title>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-</head>
-
-<body class="bg-gray-100">
-  <nav class="bg-gray-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <a href="/" class="text-white text-xl font-semibold">Home</a>
-          </div>
-          <div class="hidden md:block">
-            <div class="ml-10 flex items-baseline space-x-4">
-              <a href="/about" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">About</a>
-              <a href="/contact" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Contact</a>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="mt-8">
+        <a href="/" style="color: #81a2be; text-decoration: none;" onmouseover="this.style.color='#b5bd68';" onmouseout="this.style.color='#81a2be';">← Back to home</a>
     </div>
-  </nav>
-
-  <!-- Content specific to each page will go here -->
-  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    {{ .Content }}
-  </div>
-
-  <footer class="bg-gray-800 text-white text-center py-4">
-    <p>&copy; 2024 My Website</p>
-  </footer>
-</body>
-
-</html>
+{{ end }}

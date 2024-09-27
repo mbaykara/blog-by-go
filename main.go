@@ -142,7 +142,7 @@ func PostHandler(w http.ResponseWriter, r *http.Request) {
 	// }
 	// fmt.Println(data)
 
-	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "post.gohtml")))
+	tmpl := template.Must(template.ParseFiles(filepath.Join("templates", "base.gohtml"), filepath.Join("templates", "post.gohtml")))
 	if err := tmpl.Execute(w, post); err != nil {
 		http.Error(w, "Error executing template", http.StatusInternalServerError)
 		return

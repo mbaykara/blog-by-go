@@ -1,40 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ .Title }}</title>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }} - Engineering Blog</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1d1f21;
+            color: #c5c8c6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #282a2e;
+            border: 1px solid #373b41;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+        }
+        header {
+            text-align: center;
+            padding: 10px 0;
+            margin-bottom: 30px;
+            background-color: #373b41;
+            color: #81a2be;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        nav ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        nav ul li {
+            margin: 0 50px;
+        }
+        nav ul li a {
+            text-decoration: none;
+            color: #8abeb7;
+        }
+        nav ul li a:hover {
+            color: #b5bd68;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px 0;
+            background-color: #373b41;
+            color: #81a2be;
+        }
+        .terminal-text {
+            font-family: 'Courier New', Courier, monospace;
+            color: #b5bd68;
+            padding: 10px;
+            background-color: #1d1f21;
+            border: 1px solid #373b41;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
+<body>
+    <header>
+        <h1 style="font-size: 2.5em; color: #b5bd68;">Engineering Blog</h1> 
+        <h2 style="font-size: 1.5em; color: #8abeb7; margin-top: 5px; font-style: italic;">Weniger aber Besser</h2>
+        <p style="font-size: 1em; color: #c5c8c6; margin: 0;">— Dieter Rams -</p>
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/about">About</a></li>
+                <li><a href="/contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
 
-<body class="bg-gray-100">
-  <nav class="bg-gray-800">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <a href="/" class="text-white text-xl font-semibold">Home</a>
-          </div>
-          <div class="hidden md:block">
-            <div class="ml-10 flex items-baseline space-x-4">
-              <a href="/about" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">About</a>
-              <a href="/contact" class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Contact</a>
-            </div>
-          </div>
+    <div class="container">
+        <div class="terminal-text">
+            {{ block "content" . }}{{ end }}
         </div>
-      </div>
     </div>
-  </nav>
 
-  <!-- Content specific to each page will go here -->
-  <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    {{ block "content" . }}{{ end }}
-  </div>
-
-  <footer class="bg-gray-800 text-white text-center py-4">
-    <p>&copy; 2024 My Website</p>
-  </footer>
+    <footer>
+        <p>&copy; 2024 Mehmet Ali Baykara Blog. All rights reserved.</p>
+    </footer>
 </body>
-
 </html>
