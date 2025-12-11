@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -122,7 +123,7 @@ func main() {
 	http.HandleFunc("/about", AboutHandler)
 	http.HandleFunc("/contact", ContactHandler)
 	http.HandleFunc("/post/", PostHandler)
-
+	fmt.Println("Server is running...")
 	log.Fatal(http.ListenAndServe(":8090", nil))
 }
 
