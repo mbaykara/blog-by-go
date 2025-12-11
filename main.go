@@ -173,14 +173,10 @@ func GenerateStaticSite(outputDir string) error {
 		return err
 	}
 
-	postDir := filepath.Join(outputDir, "post")
-	if err := os.MkdirAll(postDir, 0755); err != nil {
-		return err
-	}
-
 	for _, file := range files {
 		slug := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
-		postPath := filepath.Join("post", slug+".html")
+		// Generate as post/slug/index.html for GitHub Pages clean URLs
+		postPath := filepath.Join("post", slug, "index.html")
 		reqURL, _ := url.Parse("/post/" + slug)
 		req := &http.Request{
 			URL: reqURL,
