@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -119,12 +120,124 @@ func LoadBlogPosts() ([]PostData, error) {
 }
 
 func main() {
+	// Check if we should generate static files instead of running a server
+	if len(os.Args) > 1 && os.Args[1] == "--generate" {
+		if err := GenerateStaticSite("public"); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Static site generated successfully!")
+		return
+	}
+
 	http.HandleFunc("/", HomeHandler)
 	http.HandleFunc("/about", AboutHandler)
 	http.HandleFunc("/contact", ContactHandler)
 	http.HandleFunc("/post/", PostHandler)
 	fmt.Println("Server is running...")
 	log.Fatal(http.ListenAndServe(":8090", nil))
+}
+
+// GenerateStaticSite generates static HTML files for all pages
+func GenerateStaticSite(outputDir string) error {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return err
+	}
+
+	// Generate index.html (home page)
+	if err := generatePage(outputDir, "index.html", func(w http.ResponseWriter) error {
+		HomeHandler(w, &http.Request{})
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Generate about.html
+	if err := generatePage(outputDir, "about.html", func(w http.ResponseWriter) error {
+		AboutHandler(w, &http.Request{})
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Generate contact.html
+	if err := generatePage(outputDir, "contact.html", func(w http.ResponseWriter) error {
+		ContactHandler(w, &http.Request{})
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Generate post pages
+	files, err := filepath.Glob("posts/*.md")
+	if err != nil {
+		return err
+	}
+
+	postDir := filepath.Join(outputDir, "post")
+	if err := os.MkdirAll(postDir, 0755); err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		slug := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+		postPath := filepath.Join("post", slug+".html")
+		reqURL, _ := url.Parse("/post/" + slug)
+		req := &http.Request{
+			URL: reqURL,
+		}
+		if err := generatePage(outputDir, postPath, func(w http.ResponseWriter) error {
+			PostHandler(w, req)
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// generatePage generates a single HTML page by executing a handler
+func generatePage(outputDir, filename string, handler func(http.ResponseWriter) error) error {
+	var buf bytes.Buffer
+	w := &responseWriter{ResponseWriter: &mockResponseWriter{buf: &buf}}
+
+	if err := handler(w); err != nil {
+		return err
+	}
+
+	outputPath := filepath.Join(outputDir, filename)
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(outputPath, buf.Bytes(), 0644)
+}
+
+// mockResponseWriter is a minimal http.ResponseWriter implementation
+type mockResponseWriter struct {
+	buf    *bytes.Buffer
+	header http.Header
+	status int
+}
+
+func (m *mockResponseWriter) Header() http.Header {
+	if m.header == nil {
+		m.header = make(http.Header)
+	}
+	return m.header
+}
+
+func (m *mockResponseWriter) Write(b []byte) (int, error) {
+	return m.buf.Write(b)
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	m.status = statusCode
+}
+
+// responseWriter wraps a ResponseWriter to capture output
+type responseWriter struct {
+	http.ResponseWriter
 }
 
 func PostHandler(w http.ResponseWriter, r *http.Request) {
